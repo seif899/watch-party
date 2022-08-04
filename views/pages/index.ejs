@@ -7,9 +7,10 @@
 <body>
 
   <%- include ("../partials/nav.ejs") %>
+  <div>
     <input type="text" id="link-injector">
     <button id="load">load</button>
-
+  </div>
     <script>
       let count=0
       function handleClick(){
@@ -25,8 +26,9 @@
             player.loadVideoById(videoId)
           }
           scr=document.createElement("script");
-          scr.innerHTML=`console.log("${videoId}");var tag = document.createElement('script');tag.src = 'https://www.youtube.com/iframe_api';var firstScriptTag = document.getElementsByTagName('script')[0];firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);var player;function onYouTubeIframeAPIReady(videoId) {console.log('ha');player = new YT.Player('player', { height: '390', width: '640', videoId: "${videoId}", playerVars: { 'playsinline': 1 }, events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange } }); } function onPlayerReady(event) { event.target.playVideo(); } var done = false; function onPlayerStateChange(event) { if (event.data == YT.PlayerState.PLAYING && !done) { done = true; } } function stopVideo() { player.stopVideo(); }`
+          scr.innerHTML=`console.log("${videoId}");var tag = document.createElement('script');tag.src = 'https://www.youtube.com/iframe_api';var firstScriptTag = document.getElementsByTagName('script')[0];firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);var player;function onYouTubeIframeAPIReady(videoId) {player = new YT.Player('player', { height: '390', width: '640', videoId: "${videoId}", playerVars: { 'playsinline': 1,controls:0 }, events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange } }); } function onPlayerReady(event) { event.target.playVideo();setInterval(()=>customProgress(player.getCurrentTime(),player.getDuration()),1000) } var done = false; function onPlayerStateChange(event) { if (event.data == YT.PlayerState.PLAYING && !done) { done = true; }  } function stopVideo() { player.stopVideo(); }`
           document.getElementById("player").appendChild(scr); 
+          document.getElementById("controller").style.display="flex"; 
           count=1    
         }) 
         .catch(err=>console.log(err)) 
@@ -35,6 +37,40 @@
     </script>
     <div id="player"></div>
 
+    <div id="controller" style="display: none;">
+    <button id="play-vid">
+    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor" class="bi bi-play" viewBox="0 0 16 16">
+      <path d="M10.804 8 5 4.633v6.734L10.804 8zm.792-.696a.802.802 0 0 1 0 1.392l-6.363 3.692C4.713 12.69 4 12.345 4 11.692V4.308c0-.653.713-.998 1.233-.696l6.363 3.692z"/>
+    </svg>
+    </button>
+    <button id="pause-vid">
+      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor" class="bi bi-pause" viewBox="0 0 16 16">
+        <path d="M6 3.5a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5zm4 0a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5z"/>
+      </svg>
+    </button>
+    <div style="width: 550px;height: 37px;border:solid 1px gray;background-color: rgb(224, 221, 221);">
+      <div style="margin-top: 10px;">
+      <input type="range" id="vol" name="vol" min="0" max="100" value="0">
+      </div>
+    </div>
+    
+
+  </div>
+
+
+  <script>
+    document.getElementById("play-vid").addEventListener("click",()=>player.playVideo())
+    document.getElementById("pause-vid").addEventListener("click",()=>player.pauseVideo())
+    
+    function customProgress(currentTime,totalTime){
+      document.getElementById("vol").value=(currentTime/totalTime)*100
+    }
+
+    document.getElementById("vol").addEventListener("mouseup",(e)=>{
+      player.seekTo((e.target.value*player.getDuration())/100,true);
+    })
+
+  </script>
 
 </body>
 </html>
