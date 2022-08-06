@@ -6,7 +6,6 @@
 
 <body>
 
-  <%- include ("../partials/nav.ejs") %>
   <div>
     <input type="text" id="link-injector">
     <button id="load">load</button>
@@ -19,7 +18,7 @@
       let count=0;
       let count2=0;
       let intiator=false;
-      let intiatorTime;
+      let realTime;
 
       socket.on("recieve",(videoId)=>{
         if (count2){
@@ -27,7 +26,31 @@
         }else{
         console.log(videoId);
         scr=document.createElement("script");
-        scr.innerHTML=`var tag = document.createElement('script');tag.src = 'https://www.youtube.com/iframe_api';var firstScriptTag = document.getElementsByTagName('script')[0];firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);var player;function onYouTubeIframeAPIReady(videoId) {player = new YT.Player('player', { height: '390', width: '640', videoId: "${videoId}", playerVars: { 'playsinline': 1,controls:0,'origin':"http://localhost:5000" }, events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange } }); } function onPlayerReady(event) {setInterval(()=>customProgress(player.getCurrentTime(),player.getDuration()),1000) } var done = false; function onPlayerStateChange(event) { if (event.data == YT.PlayerState.PLAYING && !done) { done = true; }  } function stopVideo() { player.stopVideo(); }`
+        scr.innerHTML=`var tag = document.createElement('script');
+tag.src = 'https://www.youtube.com/iframe_api';
+var firstScriptTag = document.getElementsByTagName('script')[0];
+firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+var player;
+function onYouTubeIframeAPIReady(videoId) {
+    player = new YT.Player
+    ('player', 
+    { height: '390', 
+    width: '640',
+     videoId: "${videoId}",
+      playerVars: { 'playsinline': 1,controls:0,'origin':"http://localhost:5000" }, 
+      events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange } }); }
+function onPlayerReady(event) { 
+    setInterval(()=>customProgress(player.getCurrentTime(),player.getDuration()),1000)
+ } 
+ var done = false; 
+ function onPlayerStateChange(event) { 
+    if (event.data == YT.PlayerState.PLAYING && !done) 
+    { done = true; }  
+
+} 
+function stopVideo() { 
+    player.stopVideo(); 
+}`
         document.getElementById("player").appendChild(scr); 
         document.getElementById("controller").style.display="flex"; 
         }
@@ -67,7 +90,39 @@
           }
           else{
           scr=document.createElement("script");
-          scr.innerHTML=`var tag = document.createElement('script');tag.src = 'https://www.youtube.com/iframe_api';var firstScriptTag = document.getElementsByTagName('script')[0];firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);var player;function onYouTubeIframeAPIReady(videoId) {player = new YT.Player('player', { height: '390', width: '640', videoId: "${videoId}", playerVars: { 'playsinline': 1,controls:0,'origin':"http://localhost:5000" }, events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange } }); } function onPlayerReady(event) { setInterval(()=>customProgress(player.getCurrentTime(),player.getDuration()),1000) } var done = false; function onPlayerStateChange(event) { if (event.data == YT.PlayerState.PLAYING && !done) { done = true; }  } function stopVideo() { player.stopVideo(); }`
+          scr.innerHTML=`var tag = document.createElement('script');
+tag.src = 'https://www.youtube.com/iframe_api';
+var firstScriptTag = document.getElementsByTagName('script')[0];
+firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+var player;
+function onYouTubeIframeAPIReady(videoId) {
+    player = new YT.Player
+    ('player', 
+    { height: '390', 
+    width: '640',
+     videoId: "${videoId}",
+      playerVars: { 'playsinline': 1,controls:0,'origin':"http://localhost:5000" }, 
+      events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange } }); }
+function onPlayerReady(event) { 
+    setInterval(()=>customProgress(player.getCurrentTime(),player.getDuration()),1000)
+ } 
+ var done = false; 
+ function onPlayerStateChange(event) { 
+    if (event.data == YT.PlayerState.PLAYING && !done) 
+    { done = true; } 
+    if (event.data == YT.PlayerState.BUFFERING){
+      socket.emit("pause")
+    }
+    if (event.data == YT.PlayerState.PLAYING){
+      socket.emit("play",(response)=>{
+        console.log(response)
+      })
+    }
+
+} 
+function stopVideo() { 
+    player.stopVideo(); 
+}`
           document.getElementById("player").appendChild(scr); 
           document.getElementById("controller").style.display="flex"; 
           count=1    }
@@ -101,28 +156,33 @@
 
   <script>
     document.getElementById("play-vid").addEventListener("click",()=>{ 
-      if (!intiator){
-        console.log("chbeha");
-        player.seekTo(intiatorTime)
-      }
-      socket.emit("play")
-      player.playVideo()
+      if (!intiator) player.seekTo(intiatorTime+1)
+      socket.emit("play",(response)=>{
+        console.log(response);
+        if (response.status==="ok"){
+          player.playVideo()
+        }
+      })
+      
     })
     document.getElementById("pause-vid").addEventListener("click",()=>{
       socket.emit("pause")
       player.pauseVideo()})
     
     function customProgress(currentTime,totalTime){
+      if (intiator) socket.emit("playing",currentTime+1)
       const time=(currentTime/totalTime)*100
-      if (intiator) {
-        socket.emit("playing",currentTime+1)}
       document.getElementById("vol").value=time
     }
 
     document.getElementById("vol").addEventListener("mouseup",(e)=>{
       const seekedTime=(e.target.value*player.getDuration())/100
-      socket.emit('seeking',seekedTime)
-      player.seekTo(seekedTime,true);
+      socket.emit("seeking",seekedTime,(response)=>{
+        console.log(response);
+        if (response.status==="ok"){
+          player.seekTo(seekedTime,true);
+        }
+      })
     })
 
   </script>
