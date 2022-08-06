@@ -10,21 +10,21 @@
     <input type="text" id="link-injector">
     <button id="load">load</button>
   </div>
- 
+ console.log
   <script src="http://localhost:3000/socket.io/socket.io.js"></script>
     <script>
       const socket = io('http://localhost:3000');
-      console.log(socket);
+      
       let count=0;
       let count2=0;
       let intiator=false;
-      let realTime;
+      let intiatorTime=0;
 
       socket.on("recieve",(videoId)=>{
         if (count2){
           player.loadVideoById(videoId);
         }else{
-        console.log(videoId);
+        
         scr=document.createElement("script");
         scr.innerHTML=`var tag = document.createElement('script');
 tag.src = 'https://www.youtube.com/iframe_api';
@@ -40,12 +40,26 @@ function onYouTubeIframeAPIReady(videoId) {
       playerVars: { 'playsinline': 1,controls:0,'origin':"http://localhost:5000" }, 
       events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange } }); }
 function onPlayerReady(event) { 
+
     setInterval(()=>customProgress(player.getCurrentTime(),player.getDuration()),1000)
  } 
  var done = false; 
  function onPlayerStateChange(event) { 
+  
+  if (event.data == YT.PlayerState.PAUSED){
+      socket.emit("pause")
+      
+    }
+
     if (event.data == YT.PlayerState.PLAYING && !done) 
-    { done = true; }  
+    { done = true; } 
+    if (event.data == YT.PlayerState.PLAYING){
+      socket.emit("play",(response)=>{
+        
+      })
+    }
+  
+ 
 
 } 
 function stopVideo() { 
@@ -68,6 +82,7 @@ function stopVideo() {
       })
       socket.on("recievedTime",(time)=>{
         intiatorTime=time
+        
       })
       socket.on("recievedSeekedTime",(seekedTime)=>{
         player.seekTo(seekedTime,true)
@@ -81,8 +96,6 @@ function stopVideo() {
         fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&q=${link}&key=AIzaSyCS_8M26113YwMd6SS8z0okR4z11-0HikA`)
         .then(response=>response.json())
         .then(data=>{
-          console.log(count);
-          console.log(data);
           const videoId=data.items[0].id.videoId;
           socket.emit("upload",videoId)
           if (count){
@@ -104,10 +117,16 @@ function onYouTubeIframeAPIReady(videoId) {
       playerVars: { 'playsinline': 1,controls:0,'origin':"http://localhost:5000" }, 
       events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange } }); }
 function onPlayerReady(event) { 
+  
     setInterval(()=>customProgress(player.getCurrentTime(),player.getDuration()),1000)
  } 
  var done = false; 
  function onPlayerStateChange(event) { 
+    if (event.data == YT.PlayerState.PAUSED){
+      socket.emit("pause")
+      
+    }
+
     if (event.data == YT.PlayerState.PLAYING && !done) 
     { done = true; } 
     if (event.data == YT.PlayerState.BUFFERING){
@@ -115,7 +134,7 @@ function onPlayerReady(event) {
     }
     if (event.data == YT.PlayerState.PLAYING){
       socket.emit("play",(response)=>{
-        console.log(response)
+        
       })
     }
 
@@ -155,10 +174,16 @@ function stopVideo() {
 
 
   <script>
+    /*if (!intiator) {
+      player.getIframe().addEventListener("click",()=>{
+      player.seekTo(intiatorTime)
+    })
+  }*/
+    
     document.getElementById("play-vid").addEventListener("click",()=>{ 
-      if (!intiator) player.seekTo(intiatorTime+1)
+      if (!intiator) player.seekTo(intiatorTime)
       socket.emit("play",(response)=>{
-        console.log(response);
+        
         if (response.status==="ok"){
           player.playVideo()
         }
@@ -169,6 +194,8 @@ function stopVideo() {
       socket.emit("pause")
       player.pauseVideo()})
     
+      /*
+      })*/
     function customProgress(currentTime,totalTime){
       if (intiator) socket.emit("playing",currentTime+1)
       const time=(currentTime/totalTime)*100
@@ -178,7 +205,7 @@ function stopVideo() {
     document.getElementById("vol").addEventListener("mouseup",(e)=>{
       const seekedTime=(e.target.value*player.getDuration())/100
       socket.emit("seeking",seekedTime,(response)=>{
-        console.log(response);
+        
         if (response.status==="ok"){
           player.seekTo(seekedTime,true);
         }

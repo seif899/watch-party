@@ -14,7 +14,7 @@ const io = new Server(httpServer,
 
 //currentlyPlaying="id"
 //room id
-
+console.log
 
 io.on("connection", (socket) => {
   // ...
@@ -22,25 +22,25 @@ io.on("connection", (socket) => {
   socket.join("room1")
  
   socket.on("upload",(videoId)=>{
-    console.log(videoId);
+    
     socket.to("room1").emit("recieve",videoId);
   })
   socket.on("play",(callback)=>{
-    console.log("play");
+    
     socket.to("room1").emit("recievedPlay");
     callback({
       status:"ok"
     });
   })
   socket.on("pause",()=>{
-    console.log("pause");
+    
     socket.to("room1").emit("recievedPause");
   })
   socket.on("playing",(time)=>{
     socket.to("room1").emit("recievedTime",time);
   })
   socket.on("seeking",(seekedTime,callback)=>{
-    console.log(seekedTime);
+  
     socket.to("room1").emit("recievedSeekedTime",seekedTime);
     callback({
       status:"ok"
