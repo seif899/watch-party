@@ -1,218 +1,29 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <%- include ("../partials/header.ejs") %>
+    <%- include ("../partials/header.ejs") %>
 </head>
-
 <body>
-
-  <div>
-    <input type="text" id="link-injector">
-    <button id="load">load</button>
-  </div>
- console.log
-  <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+    <button id="create">create a room</button>
+    <script src="https://unpkg.com/uuid@latest/dist/umd/uuidv4.min.js"></script>
     <script>
-      const socket = io('http://localhost:3000');
-      
-      let count=0;
-      let count2=0;
-      let intiator=false;
-      let intiatorTime=0;
 
-      socket.on("recieve",(videoId)=>{
-        if (count2){
-          player.loadVideoById(videoId);
-        }else{
-        
-        scr=document.createElement("script");
-        scr.innerHTML=`var tag = document.createElement('script');
-tag.src = 'https://www.youtube.com/iframe_api';
-var firstScriptTag = document.getElementsByTagName('script')[0];
-firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-var player;
-function onYouTubeIframeAPIReady(videoId) {
-    player = new YT.Player
-    ('player', 
-    { height: '390', 
-    width: '640',
-     videoId: "${videoId}",
-      playerVars: { 'playsinline': 1,controls:0,'origin':"http://localhost:5000" }, 
-      events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange } }); }
-function onPlayerReady(event) { 
-
-    setInterval(()=>customProgress(player.getCurrentTime(),player.getDuration()),1000)
- } 
- var done = false; 
- function onPlayerStateChange(event) { 
-  
-  if (event.data == YT.PlayerState.PAUSED){
-      socket.emit("pause")
-      
-    }
-
-    if (event.data == YT.PlayerState.PLAYING && !done) 
-    { done = true; } 
-    if (event.data == YT.PlayerState.PLAYING){
-      socket.emit("play",(response)=>{
-        
-      })
-    }
-  
- 
-
-} 
-function stopVideo() { 
-    player.stopVideo(); 
-}`
-        document.getElementById("player").appendChild(scr); 
-        document.getElementById("controller").style.display="flex"; 
+        document.getElementById("create").addEventListener("click",sendRequest)
+        function sendRequest(){
+            const uid=uuidv4()
+            fetch(`http://localhost:3000/create/${uid}`, {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify(
+                {
+                    username:'user1',
+                    id:uid
+                }
+            )
+            }).then(res => {
+            console.log("Request complete! response:", res);
+            }).catch(err=>console.log(err))
         }
-        count2=1;
-      });
-
-      socket.on("recievedPlay",()=>{
-        player.playVideo()
-      })
-      socket.on("recievedPause",()=>{
-        player.pauseVideo()
-      })
-      socket.on("playVideo",(time)=>{
-        playVideo.seekTo(time,true)
-      })
-      socket.on("recievedTime",(time)=>{
-        intiatorTime=time
-        
-      })
-      socket.on("recievedSeekedTime",(seekedTime)=>{
-        player.seekTo(seekedTime,true)
-      })
-
-
-      function handleClick(){
-        //search for video
-        intiator=true
-        const link=document.getElementById("link-injector").value;
-        fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&q=${link}&key=AIzaSyCS_8M26113YwMd6SS8z0okR4z11-0HikA`)
-        .then(response=>response.json())
-        .then(data=>{
-          const videoId=data.items[0].id.videoId;
-          socket.emit("upload",videoId)
-          if (count){
-            player.loadVideoById(videoId)
-          }
-          else{
-          scr=document.createElement("script");
-          scr.innerHTML=`var tag = document.createElement('script');
-tag.src = 'https://www.youtube.com/iframe_api';
-var firstScriptTag = document.getElementsByTagName('script')[0];
-firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-var player;
-function onYouTubeIframeAPIReady(videoId) {
-    player = new YT.Player
-    ('player', 
-    { height: '390', 
-    width: '640',
-     videoId: "${videoId}",
-      playerVars: { 'playsinline': 1,controls:0,'origin':"http://localhost:5000" }, 
-      events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange } }); }
-function onPlayerReady(event) { 
-  
-    setInterval(()=>customProgress(player.getCurrentTime(),player.getDuration()),1000)
- } 
- var done = false; 
- function onPlayerStateChange(event) { 
-    if (event.data == YT.PlayerState.PAUSED){
-      socket.emit("pause")
-      
-    }
-
-    if (event.data == YT.PlayerState.PLAYING && !done) 
-    { done = true; } 
-    if (event.data == YT.PlayerState.BUFFERING){
-      socket.emit("pause")
-    }
-    if (event.data == YT.PlayerState.PLAYING){
-      socket.emit("play",(response)=>{
-        
-      })
-    }
-
-} 
-function stopVideo() { 
-    player.stopVideo(); 
-}`
-          document.getElementById("player").appendChild(scr); 
-          document.getElementById("controller").style.display="flex"; 
-          count=1    }
-        }) 
-        .catch(err=>console.log(err)) 
-      } 
-      document.getElementById("load").addEventListener("click", handleClick);
     </script>
-    <div id="player"></div>
-
-    <div id="controller" style="display: none;">
-    <button id="play-vid">
-    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor" class="bi bi-play" viewBox="0 0 16 16">
-      <path d="M10.804 8 5 4.633v6.734L10.804 8zm.792-.696a.802.802 0 0 1 0 1.392l-6.363 3.692C4.713 12.69 4 12.345 4 11.692V4.308c0-.653.713-.998 1.233-.696l6.363 3.692z"/>
-    </svg>
-    </button>
-    <button id="pause-vid">
-      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor" class="bi bi-pause" viewBox="0 0 16 16">
-        <path d="M6 3.5a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5zm4 0a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5z"/>
-      </svg>
-    </button>
-    <div style="width: 550px;height: 37px;border:solid 1px gray;background-color: rgb(224, 221, 221);">
-      <div style="margin-top: 10px;">
-      <input type="range" id="vol" name="vol" min="0" max="100" value="0">
-      </div>
-    </div>
-    
-
-  </div>
-
-
-  <script>
-    /*if (!intiator) {
-      player.getIframe().addEventListener("click",()=>{
-      player.seekTo(intiatorTime)
-    })
-  }*/
-    
-    document.getElementById("play-vid").addEventListener("click",()=>{ 
-      if (!intiator) player.seekTo(intiatorTime)
-      socket.emit("play",(response)=>{
-        
-        if (response.status==="ok"){
-          player.playVideo()
-        }
-      })
-      
-    })
-    document.getElementById("pause-vid").addEventListener("click",()=>{
-      socket.emit("pause")
-      player.pauseVideo()})
-    
-      /*
-      })*/
-    function customProgress(currentTime,totalTime){
-      if (intiator) socket.emit("playing",currentTime+1)
-      const time=(currentTime/totalTime)*100
-      document.getElementById("vol").value=time
-    }
-
-    document.getElementById("vol").addEventListener("mouseup",(e)=>{
-      const seekedTime=(e.target.value*player.getDuration())/100
-      socket.emit("seeking",seekedTime,(response)=>{
-        
-        if (response.status==="ok"){
-          player.seekTo(seekedTime,true);
-        }
-      })
-    })
-
-  </script>
-
 </body>
 </html>
