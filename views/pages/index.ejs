@@ -3,26 +3,29 @@
 <head>
     <%- include ("../partials/header.ejs") %>
 </head>
-<body>
+<body style="background-color:rgb(18, 19, 26);">
     <button id="create">create a room</button>
     <script src="https://unpkg.com/uuid@latest/dist/umd/uuidv4.min.js"></script>
     <script>
 
         document.getElementById("create").addEventListener("click",sendRequest)
         function sendRequest(){
-            const uid=uuidv4()
-            fetch(`http://localhost:3000/create/${uid}`, {
+            fetch(`/rooms/create`, {
             method: "POST",
-            headers: {'Content-Type': 'application/json'}, 
+            origin:"http//localhost:5000",
+            headers: {'Content-Type': 'application/json'},
+            credentials:"same-origin", 
             body: JSON.stringify(
                 {
-                    username:'user1',
-                    id:uid
+                    userID:uuidv4(),
+                    username:'user1'
                 }
             )
-            }).then(res => {
-            console.log("Request complete! response:", res);
-            }).catch(err=>console.log(err))
+            })
+           .then(res=> res.json())
+           .then(data => window.location.href = data.redirect)
+
+            .catch(err=>console.log(err))
         }
     </script>
 </body>

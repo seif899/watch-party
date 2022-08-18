@@ -4,68 +4,91 @@
   <%- include ("../partials/header.ejs") %>
 </head>
 
-<body>
+<body style="background-color:rgb(18, 19, 26);">
+  <script src="https://unpkg.com/uuid@latest/dist/umd/uuidv4.min.js"></script>
 
-  <div>
-    <input type="text" id="link-injector">
-    <button id="load">load</button>
+  <div style="display: flex; justify-content:space-between;">
+    <div>
+      <input type="text" id="link-injector">
+      <button id="load">load</button>
+    </div>
+    <div>
+      <label for="invitation-link">invite others to join this room:</label>
+    <input type="text" id="invitation-link" readonly style="width: 400px;">
+    </div>
+
   </div>
-  <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+
+  <script src="../socket.io/socket.io.js"></script>
     <script>
-      const socket = io('http://localhost:3000');
+      const socket = io('/',{
+        auth:{
+          id:window.location.pathname
+        }
+      });
       
       let count=0;
       let count2=0;
       let intiator=false;
       let intiatorTime=0;
+      function createEmbed(videoId){
+        scr=document.createElement("script");
+        scr.innerHTML=`var tag = document.createElement('script');
+                        tag.src = 'https://www.youtube.com/iframe_api';
+                        var firstScriptTag = document.getElementsByTagName('script')[0];
+                        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+                        var player;
+                        function onYouTubeIframeAPIReady(videoId) {
+                            player = new YT.Player
+                            ('player', 
+                            { height: '390', 
+                            width: '640',
+                            videoId: "${videoId}",
+                              playerVars: { 'playsinline': 1,controls:0,'origin':"http://localhost:5000" }, 
+                              events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange } }); }
+                        function onPlayerReady(event) { 
+
+                            setInterval(()=>customProgress(player.getCurrentTime(),player.getDuration()),1000)
+                        } 
+                        var done = false; 
+                        function onPlayerStateChange(event) { 
+                          
+                          if (event.data == YT.PlayerState.PAUSED){
+                              socket.emit("pause")
+                              
+                            }
+
+                            if (event.data == YT.PlayerState.PLAYING && !done) 
+                            { done = true; } 
+                            if (event.data == YT.PlayerState.PLAYING){
+                              socket.emit("play",(response)=>{
+                                
+                              })
+                            }
+                          
+                        
+
+                        } 
+                        function stopVideo() { 
+                            player.stopVideo(); 
+                        }`
+        document.getElementById("player").appendChild(scr); 
+        document.getElementById("controller").style.display="flex"; 
+      }
+
+      socket.on("joined",(roomInfo)=>{
+        console.log(roomInfo)
+        document.getElementById("invitation-link").value = roomInfo.invitationLink ;
+        if (roomInfo.currentlyPlaying){
+          createEmbed(roomInfo.currentlyPlaying);
+        }
+      })
 
       socket.on("recieve",(videoId)=>{
         if (count2){
           player.loadVideoById(videoId);
         }else{
-        
-        scr=document.createElement("script");
-        scr.innerHTML=`var tag = document.createElement('script');
-tag.src = 'https://www.youtube.com/iframe_api';
-var firstScriptTag = document.getElementsByTagName('script')[0];
-firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-var player;
-function onYouTubeIframeAPIReady(videoId) {
-    player = new YT.Player
-    ('player', 
-    { height: '390', 
-    width: '640',
-     videoId: "${videoId}",
-      playerVars: { 'playsinline': 1,controls:0,'origin':"http://localhost:5000" }, 
-      events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange } }); }
-function onPlayerReady(event) { 
-
-    setInterval(()=>customProgress(player.getCurrentTime(),player.getDuration()),1000)
- } 
- var done = false; 
- function onPlayerStateChange(event) { 
-  
-  if (event.data == YT.PlayerState.PAUSED){
-      socket.emit("pause")
-      
-    }
-
-    if (event.data == YT.PlayerState.PLAYING && !done) 
-    { done = true; } 
-    if (event.data == YT.PlayerState.PLAYING){
-      socket.emit("play",(response)=>{
-        
-      })
-    }
-  
- 
-
-} 
-function stopVideo() { 
-    player.stopVideo(); 
-}`
-        document.getElementById("player").appendChild(scr); 
-        document.getElementById("controller").style.display="flex"; 
+          createEmbed(videoId)
         }
         count2=1;
       });
@@ -101,50 +124,10 @@ function stopVideo() {
             player.loadVideoById(videoId)
           }
           else{
-          scr=document.createElement("script");
-          scr.innerHTML=`var tag = document.createElement('script');
-tag.src = 'https://www.youtube.com/iframe_api';
-var firstScriptTag = document.getElementsByTagName('script')[0];
-firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-var player;
-function onYouTubeIframeAPIReady(videoId) {
-    player = new YT.Player
-    ('player', 
-    { height: '390', 
-    width: '640',
-     videoId: "${videoId}",
-      playerVars: { 'playsinline': 1,controls:0,'origin':"http://localhost:5000" }, 
-      events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange } }); }
-function onPlayerReady(event) { 
-
-       const interval=setInterval(()=>customProgress(player.getCurrentTime(),player.getDuration()),1000)
-
- } 
- var done = false; 
- function onPlayerStateChange(event) { 
-    if (event.data == YT.PlayerState.PAUSED){
-      socket.emit("pause")
-      
-    }
-
-    if (event.data == YT.PlayerState.PLAYING && !done) 
-    { done = true; } 
-    if (event.data == YT.PlayerState.BUFFERING){
-      socket.emit("pause")
-    }
-    if (event.data == YT.PlayerState.PLAYING){
-      socket.emit("play",(response)=>{
-        
-      })
-    }
-
-} 
-function stopVideo() { 
-    player.stopVideo(); 
-}`
-          document.getElementById("player").appendChild(scr); 
-          document.getElementById("controller").style.display="flex"; 
-          count=1    }
+            createEmbed(videoId)
+            scr=document.createElement("script");
+            count=1   
+          }
         }) 
         .catch(err=>console.log(err)) 
       } 
