@@ -51,7 +51,7 @@ app.post("/rooms/create",(req,res)=>{
   rooms.push({
     currentlyPlaying:'',
     users:[{username:username,userID:userID,roomID:roomID}],
-    invitationID:invitationID
+    invitationID:invitationID,
   })
   req.session.userID=userID
   req.session.save(()=>{
@@ -107,14 +107,22 @@ app.get('/join/:id',(req,res)=>{
   }
 })
 
- 
+
 io.on("connection", (socket) => {
   // ...
   console.log("a user connected");
   const path = socket.handshake.auth.id
   const roomID = path.substring(7);
-  const found = rooms.findIndex(room=> room.users.some(user=> user.roomID===roomID))
+  let index;
+  const found = rooms.findIndex(room=> room.users.some((user,i)=> {
+    if (user.roomID===roomID){
+      index=i;
+      return true
+    }
+    return false
+  }))
   if (found>-1){
+    rooms[found].users[index].socketId=socket.id
     const room="room"+found
     socket.join(room)
     const roomInfo = { currentlyPlaying: rooms[found].currentlyPlaying, invitationLink:`http:localhost:500/join/${rooms[found].invitationID}` }
@@ -132,11 +140,39 @@ io.on("connection", (socket) => {
     socket.on("pause",()=>{
       socket.to(room).emit("recievedPause");
     })
-    socket.on("playing",(time)=>{
-      socket.to(room).emit("recievedTime",time);
+
+    
+    socket.on("playing",(currentTime,realTime)=>{
+      rooms[found].users[index].currentTime=currentTime
+      socket.in(room).emit("recievedTime",Math.max(...rooms[found].users.map(user=>user.currentTime)),realTime);
+      
+
+      //!!!! maybe the first recieved socket is what we should use as realTime?
+      /*if (rooms[found].timeStamps.findIndex(timestamp => timestamp.socketId===socket.id) === -1){
+        rooms[found].timeStamps.push({socketId:socket.id , currentTime: currentTime})
+      }
+
+      //const findSocket=prevTimeStamps.findIndex(timestamp=>timestamp.socketId===socket.id)
+     // let shouldGoBack=false
+     // if (findSocket>-1 && currentTime<prevTimeStamps[findSocket].currentTime){
+      //  shouldGoBack=true
+      //}
+      if (rooms[found].timeStamps.length===rooms[found].users.length){
+       // if (shouldGoBack){
+        //  timeStamps.map(timestamp=>timestamp.currentTime=currentTime)
+         // shouldGoBack=false
+       // }
+        console.log(rooms[found].timeStamps)
+        socket.in(room).emit("recievedTime",Math.max(...rooms[found].timeStamps.map(timestamp=>timestamp.currentTime)),realTime);
+        //prevTimeStamps=JSON.parse(JSON.stringify(timeStamps));
+        rooms[found].timeStamps=[]   
+      }*/
     })
-    socket.on("seeking",(seekedTime,callback)=>{
-      socket.to(room).emit("recievedSeekedTime",seekedTime);
+
+    socket.on("seeking",(seekedTime,realTime,callback)=>{
+      // i need to make other users hold until the seek is completed
+      rooms[found].users.map(user=>user.currentTime=seekedTime);
+      socket.in(room).emit("recievedSeekedTime",seekedTime,realTime);
       callback({
         status:"ok"
       });

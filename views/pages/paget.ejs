@@ -29,8 +29,8 @@
       
       let count=0;
       let count2=0;
-      let intiator=false;
-      let intiatorTime=0;
+      const LIMIT=0.2;
+      let playerInterval;
       function createEmbed(videoId){
         scr=document.createElement("script");
         scr.innerHTML=`var tag = document.createElement('script');
@@ -47,24 +47,31 @@
                               playerVars: { 'playsinline': 1,controls:0,'origin':"http://localhost:5000" }, 
                               events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange } }); }
                         function onPlayerReady(event) { 
-
-                            setInterval(()=>customProgress(player.getCurrentTime(),player.getDuration()),1000)
+                            
                         } 
-                        var done = false; 
                         function onPlayerStateChange(event) { 
                           
                           if (event.data == YT.PlayerState.PAUSED){
+                              clearInterval(playerInterval)
                               socket.emit("pause")
                               
                             }
-
-                            if (event.data == YT.PlayerState.PLAYING && !done) 
-                            { done = true; } 
-                            if (event.data == YT.PlayerState.PLAYING){
+                          let count=0;
+                          if (event.data == YT.PlayerState.PLAYING){
+                            if (count===0){
                               socket.emit("play",(response)=>{
-                                
+                                  if (response.status==="ok"){
+                                    player.playVideo()
+                                  }
                               })
                             }
+                            count=1;
+                            playerInterval = setInterval(()=>customProgress(player.getCurrentTime(),player.getDuration()),1000);
+                          }
+
+                          /*if (event.data == YT.PlayerState.BUFFERING){
+                            clearInterval(playerInterval)
+                          }*/
                           
                         
 
@@ -74,6 +81,11 @@
                         }`
         document.getElementById("player").appendChild(scr); 
         document.getElementById("controller").style.display="flex"; 
+      }
+
+      function getLatency(time){
+        const d = new Date();
+        return (d.getTime() - time)*0.001 
       }
 
       socket.on("joined",(roomInfo)=>{
@@ -97,23 +109,26 @@
         player.playVideo()
       })
       socket.on("recievedPause",()=>{
+        clearInterval(playerInterval)
         player.pauseVideo()
       })
       socket.on("playVideo",(time)=>{
         playVideo.seekTo(time,true)
       })
-      socket.on("recievedTime",(time)=>{
-        intiatorTime=time
-        
+      socket.on("recievedTime",(roomTime,realTime)=>{
+        const latency=getLatency(realTime)
+        if ( (roomTime+latency)-player.getCurrentTime()>=LIMIT ){
+          console.log("here")
+          player.seekTo(roomTime+latency)
+        }
       })
-      socket.on("recievedSeekedTime",(seekedTime)=>{
-        player.seekTo(seekedTime,true)
+      socket.on("recievedSeekedTime",(seekedTime,realTime)=>{
+        player.seekTo(seekedTime+getLatency(realTime),true)
       })
 
 
       function handleClick(){
         //search for video
-        intiator=true
         const link=document.getElementById("link-injector").value;
         fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&q=${link}&key=AIzaSyCS_8M26113YwMd6SS8z0okR4z11-0HikA`)
         .then(response=>response.json())
@@ -164,7 +179,7 @@
   }*/
     
     document.getElementById("play-vid").addEventListener("click",()=>{ 
-      if (!intiator) player.seekTo(intiatorTime)
+      //if (!intiator) player.seekTo(intiatorTime)
       socket.emit("play",(response)=>{
         
         if (response.status==="ok"){
@@ -180,14 +195,18 @@
       /*
       })*/
     function customProgress(currentTime,totalTime){
-      if (intiator) socket.emit("playing",currentTime+1)
+      const d = new Date();
+      const realTime=d.getTime();
+      socket.emit("playing",currentTime,realTime)
       const time=(currentTime/totalTime)*100
       document.getElementById("vol").value=time
     }
 
     document.getElementById("vol").addEventListener("mouseup",(e)=>{
-      const seekedTime=(e.target.value*player.getDuration())/100
-      socket.emit("seeking",seekedTime,(response)=>{
+      const seekedTime=(e.target.value*player.getDuration())/100;
+      const d = new Date();
+      const realTime=d.getTime();
+      socket.emit("seeking",seekedTime,realTime,(response)=>{
         
         if (response.status==="ok"){
           player.seekTo(seekedTime,true);
