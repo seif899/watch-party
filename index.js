@@ -88,7 +88,6 @@ app.get("/rooms/:id",auth,(req,res)=>{
 
 app.get('/join/:id',(req,res)=>{
   const {id} = req.params;
-  console.log(id);
   const found = rooms.findIndex(room => {
     return room.invitationID === id
   }
@@ -110,7 +109,6 @@ app.get('/join/:id',(req,res)=>{
 
 io.on("connection", (socket) => {
   // ...
-  console.log("a user connected");
   const path = socket.handshake.auth.id
   const roomID = path.substring(7);
   let index;
@@ -141,32 +139,18 @@ io.on("connection", (socket) => {
       socket.to(room).emit("recievedPause");
     })
 
-    
+    let prev=0;
     socket.on("playing",(currentTime,realTime)=>{
       rooms[found].users[index].currentTime=currentTime
-      socket.in(room).emit("recievedTime",Math.max(...rooms[found].users.map(user=>user.currentTime)),realTime);
-      
-
-      //!!!! maybe the first recieved socket is what we should use as realTime?
-      /*if (rooms[found].timeStamps.findIndex(timestamp => timestamp.socketId===socket.id) === -1){
-        rooms[found].timeStamps.push({socketId:socket.id , currentTime: currentTime})
+      if (currentTime>=prev){
+        socket.in(room).emit("recievedTime",Math.max(...rooms[found].users.map(user=>user.currentTime)),realTime,false);
       }
-
-      //const findSocket=prevTimeStamps.findIndex(timestamp=>timestamp.socketId===socket.id)
-     // let shouldGoBack=false
-     // if (findSocket>-1 && currentTime<prevTimeStamps[findSocket].currentTime){
-      //  shouldGoBack=true
-      //}
-      if (rooms[found].timeStamps.length===rooms[found].users.length){
-       // if (shouldGoBack){
-        //  timeStamps.map(timestamp=>timestamp.currentTime=currentTime)
-         // shouldGoBack=false
-       // }
-        console.log(rooms[found].timeStamps)
-        socket.in(room).emit("recievedTime",Math.max(...rooms[found].timeStamps.map(timestamp=>timestamp.currentTime)),realTime);
-        //prevTimeStamps=JSON.parse(JSON.stringify(timeStamps));
-        rooms[found].timeStamps=[]   
-      }*/
+      else{
+        socket.in(room).emit("recievedTime",currentTime,realTime,true);
+      }
+      prev=currentTime
+      
+      
     })
 
     socket.on("seeking",(seekedTime,realTime,callback)=>{
@@ -176,10 +160,9 @@ io.on("connection", (socket) => {
       callback({
         status:"ok"
       });
+      socket.in(room).emit("recievedTime",seekedTime,realTime,true);
     })
-  } else {
-    console.log(rooms,roomID)
-  }
+  } 
   
 
 });
