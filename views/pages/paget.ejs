@@ -9,7 +9,7 @@
 
   <div style="display: flex; justify-content:space-between;">
     <div>
-      <input type="text" id="link-injector">
+      <input type="text" id="link-injector" placeholder="paste your youtube link here">
       <button id="load">load</button>
     </div>
     <div>
@@ -44,7 +44,7 @@
                             { height: '390', 
                             width: '640',
                             videoId: "${videoId}",
-                              playerVars: { 'playsinline': 1,controls:0,'origin':"http://localhost:5000" }, 
+                              playerVars: { 'playsinline': 1,controls:0 }, 
                               events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange } }); }
                         function onPlayerReady(event) { 
                             
@@ -69,9 +69,9 @@
                             playerInterval = setInterval(()=>customProgress(player.getCurrentTime(),player.getDuration()),1000);
                           }
 
-                          /*if (event.data == YT.PlayerState.BUFFERING){
+                          if (event.data == YT.PlayerState.BUFFERING){
                             clearInterval(playerInterval)
-                          }*/
+                          }
                           
                         
 
@@ -108,27 +108,20 @@
         player.playVideo()
       })
       socket.on("recievedPause",()=>{
-        clearInterval(playerInterval)
         player.pauseVideo()
       })
       socket.on("playVideo",(time)=>{
         playVideo.seekTo(time,true)
       })
-      socket.on("recievedTime",(roomTime,realTime,isGoingBack)=>{
+      socket.on("recievedTime",(roomTime,realTime)=>{
         const latency=getLatency(realTime)
-        if (isGoingBack){
-          player.seekTo(roomTime+latency)
-        }
-        else{
-          if ( (roomTime+latency)-player.getCurrentTime()>=LIMIT ){
+        if ( (roomTime+latency)-player.getCurrentTime()>=LIMIT ){
             player.seekTo(roomTime+latency)
-        }
         }
 
       })
       socket.on("recievedSeekedTime",(seekedTime,realTime)=>{
-        clearInterval(playerInterval)
-        player.seekTo(seekedTime+getLatency(realTime),true)
+        player.seekTo(seekedTime+getLatency(realTime),true);
       })
 
 
@@ -194,7 +187,6 @@
       
     })
     document.getElementById("pause-vid").addEventListener("click",()=>{
-      clearInterval(playerInterval)
       socket.emit("pause")
       player.pauseVideo()})
     
@@ -212,7 +204,6 @@
       const seekedTime=(e.target.value*player.getDuration())/100;
       const d = new Date();
       const realTime=d.getTime();
-      clearInterval(playerInterval)
       socket.emit("seeking",seekedTime,realTime,(response)=>{
         if (response.status==="ok"){
           player.seekTo(seekedTime,true);

@@ -12,13 +12,11 @@
         function sendRequest(){
             fetch(`/rooms/create`, {
             method: "POST",
-            origin:"http//localhost:5000",
             headers: {'Content-Type': 'application/json'},
             credentials:"same-origin", 
             body: JSON.stringify(
                 {
                     userID:uuidv4(),
-                    username:'user1'
                 }
             )
             })

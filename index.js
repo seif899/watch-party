@@ -3,39 +3,34 @@ const path = require('path')
 const PORT = process.env.PORT || 500
 const { v4: uuidv4 } = require('uuid');
 const session = require('express-session');
-const { createServer } = require("http"); 
-const { Server } = require("socket.io");
+const socketIO = require('socket.io');
 const cors = require("cors");
 const bodyParser = require('body-parser');
 
 
 
+
 const app=express();  
-const httpServer = createServer(app);
 app.use("/static", express.static('./static/'));
 app.use(cors({credentials: true, origin: true}));
-app
+const server = app
   .use(express.static(path.join(__dirname, 'public')))
   .set('views', path.join(__dirname, 'views'))
   .set('view engine', 'ejs')
   .get('/', (req, res) => res.render('pages/index'))
+  .listen(PORT, () => console.log(`Listening on ${PORT}`));
 
-
-
-
-
-
-const io = new Server(httpServer);
+const io = socketIO(server);
 
 const EXPIRES=24*60*60*1000
-const PROD = false
+
 app.use(bodyParser.json())
 
 app.use(session({
-  secret: "skaskaskakaklxakx",
+  secret: process.env.SESS_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { path:"/", secure: true , httpOnly:true , maxAge:EXPIRES , secure:false}
+  cookie: { path:"/", secure: true , httpOnly:true , maxAge:EXPIRES , secure:process.env.STAGE==="PROD" ? true : false}
 }))
 
 
@@ -108,7 +103,6 @@ app.get('/join/:id',(req,res)=>{
 
 
 io.on("connection", (socket) => {
-  // ...
   const path = socket.handshake.auth.id
   const roomID = path.substring(7);
   let index;
@@ -123,7 +117,7 @@ io.on("connection", (socket) => {
     rooms[found].users[index].socketId=socket.id
     const room="room"+found
     socket.join(room)
-    const roomInfo = { currentlyPlaying: rooms[found].currentlyPlaying, invitationLink:`http:localhost:500/join/${rooms[found].invitationID}` }
+    const roomInfo = { currentlyPlaying: rooms[found].currentlyPlaying, invitationLink:`/${rooms[found].invitationID}` }
     socket.emit("joined",roomInfo)
     socket.on("upload",(videoId)=>{
       rooms[found].currentlyPlaying=videoId
@@ -139,32 +133,20 @@ io.on("connection", (socket) => {
       socket.to(room).emit("recievedPause");
     })
 
-    let prev=0;
     socket.on("playing",(currentTime,realTime)=>{
       rooms[found].users[index].currentTime=currentTime
-      if (currentTime>=prev){
-        socket.in(room).emit("recievedTime",Math.max(...rooms[found].users.map(user=>user.currentTime)),realTime,false);
-      }
-      else{
-        socket.in(room).emit("recievedTime",currentTime,realTime,true);
-      }
-      prev=currentTime
-      
+      socket.in(room).emit("recievedTime",Math.max(...rooms[found].users.map(user=>user.currentTime)),realTime);
       
     })
 
     socket.on("seeking",(seekedTime,realTime,callback)=>{
-      // i need to make other users hold until the seek is completed
-      rooms[found].users.map(user=>user.currentTime=seekedTime);
+      rooms[found].users.map(user=>user.currentTime=seekedTime)
       socket.in(room).emit("recievedSeekedTime",seekedTime,realTime);
       callback({
         status:"ok"
       });
-      socket.in(room).emit("recievedTime",seekedTime,realTime,true);
     })
   } 
   
 
 });
-
-httpServer.listen(PORT);
