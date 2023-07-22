@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite App</title>
+  </head>
+  <body>
+     <!-- 1. The <iframe> (and video player) will replace this <div> tag. -->
+    <div id="player"></div>
+
+    <div id="controller" style="display: flex;">
+
+      <button id="play-vid">
+      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor" class="bi bi-play" viewBox="0 0 16 16">
+        <path d="M10.804 8 5 4.633v6.734L10.804 8zm.792-.696a.802.802 0 0 1 0 1.392l-6.363 3.692C4.713 12.69 4 12.345 4 11.692V4.308c0-.653.713-.998 1.233-.696l6.363 3.692z"/>
+      </svg>
+      </button>
+
+      <button id="pause-vid">
+        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor" class="bi bi-pause" viewBox="0 0 16 16">
+          <path d="M6 3.5a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5zm4 0a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5z"/>
+        </svg>
+      </button>
+
+      <button id="volume">
+      <svg style="display:none" id="mute" xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor" class="bi bi-volume-up-fill" viewBox="0 0 16 16"> <path d="M11.536 14.01A8.473 8.473 0 0 0 14.026 8a8.473 8.473 0 0 0-2.49-6.01l-.708.707A7.476 7.476 0 0 1 13.025 8c0 2.071-.84 3.946-2.197 5.303l.708.707z"/> <path d="M10.121 12.596A6.48 6.48 0 0 0 12.025 8a6.48 6.48 0 0 0-1.904-4.596l-.707.707A5.483 5.483 0 0 1 11.025 8a5.483 5.483 0 0 1-1.61 3.89l.706.706z"/> <path d="M8.707 11.182A4.486 4.486 0 0 0 10.025 8a4.486 4.486 0 0 0-1.318-3.182L8 5.525A3.489 3.489 0 0 1 9.025 8 3.49 3.49 0 0 1 8 10.475l.707.707zM6.717 3.55A.5.5 0 0 1 7 4v8a.5.5 0 0 1-.812.39L3.825 10.5H1.5A.5.5 0 0 1 1 10V6a.5.5 0 0 1 .5-.5h2.325l2.363-1.89a.5.5 0 0 1 .529-.06z"/>
+       </svg> 
+
+       <svg id="unmute" xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor" class="bi bi-volume-mute-fill" viewBox="0 0 16 16"> <path d="M6.717 3.55A.5.5 0 0 1 7 4v8a.5.5 0 0 1-.812.39L3.825 10.5H1.5A.5.5 0 0 1 1 10V6a.5.5 0 0 1 .5-.5h2.325l2.363-1.89a.5.5 0 0 1 .529-.06zm7.137 2.096a.5.5 0 0 1 0 .708L12.207 8l1.647 1.646a.5.5 0 0 1-.708.708L11.5 8.707l-1.646 1.647a.5.5 0 0 1-.708-.708L10.793 8 9.146 6.354a.5.5 0 1 1 .708-.708L11.5 7.293l1.646-1.647a.5.5 0 0 1 .708 0z"/> </svg> 
+      </button>
+
+      <div style="width: 562px;height: 37px;border:solid 1px gray;background-color: rgb(224, 221, 221);">
+        <div style="margin-top: 5px;">
+        <input type="range" id="vol" name="vol" min="0" max="100" value="0" style="width: 98%;">
+        </div>
+      </div>
+
+
+      <script src="https://cdn.socket.io/4.6.0/socket.io.min.js" integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" crossorigin="anonymous"></script> 
+    <script>
+      const socket = io("http://localhost:3000");
+
+
+      //  This code loads the IFrame Player API code asynchronously.
+      const tag = document.createElement('script');
+
+      tag.src = "https://www.youtube.com/iframe_api";
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+      
+      //  This function creates an <iframe> (and YouTube player)
+      //    after the API code downloads.
+      let player;
+      function onYouTubeIframeAPIReady() {
+        player = new YT.Player('player', {
+          height: '390',
+          width: '640',
+          videoId: 'M7lc1UVf-VE',
+          playerVars: {
+            'playsinline': 1,
+            'controls': 0 ,
+            'mute': 1
+          },
+          events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange
+          }
+        });
+      }
+
+      //  The API will call this function when the video player is ready.
+      function onPlayerReady(event) {
+        socket.emit('videoStarted');
+        player.playVideo();
+      }
+
+      //  The API calls this function when the player's state changes.
+      //    The function indicates that when playing a video (state=1),
+      let playerInterval;
+
+      function onPlayerStateChange(event) {
+        if (event.data == YT.PlayerState.PLAYING ) {
+          playerInterval = setInterval(()=>customProgress(player.getCurrentTime(),player.getDuration()),1000);
+          
+
+        } 
+        if (event.data == YT.PlayerState.PAUSED && playerInterval) {
+          clearInterval(playerInterval);
+        }
+      }
+      function stopVideo() {
+        player.stopVideo();
+      }
+
+
+      function customProgress(currentTime,totalTime){
+        const time=(currentTime/totalTime)*100;
+        document.getElementById("vol").value=time;
+      }
+
+
+      // custom controls
+
+      document.getElementById("play-vid").addEventListener("click",()=>{ 
+            if (player.getPlayerState()===2){
+                socket.emit("play"); 
+
+                player.playVideo();
+
+            }
+            
+        })
+
+      document.getElementById("pause-vid").addEventListener("click",()=>{
+          if (player.getPlayerState()===1){
+              socket.emit("pause");
+
+              player.pauseVideo();
+          
+
+          }
+
+
+      });
+
+      document.getElementById("vol").addEventListener("mouseup",(e)=>{
+          const seekedTime=(e.target.value*player.getDuration())/100;
+          socket.emit("seek",seekedTime,Date.now());
+          player.seekTo(seekedTime,true);
+          clearInterval(playerInterval);
+          
+      })  
+
+      document.getElementById("volume").addEventListener("click",(e)=>{
+          if (player.isMuted()){
+              player.unMute();
+              document.getElementById("unmute").style.display="none";
+              document.getElementById("mute").style.display="block";
+          } else {
+              player.mute();
+              document.getElementById("mute").style.display="none";
+              document.getElementById("unmute").style.display="block";
+              
+          }
+      })
+
+
+      // listening for sent events
+      const LIMIT = 3;
+
+      socket.on("play",()=>{
+        player.playVideo();
+      })
+      
+      socket.on("pause",()=>{
+        console.log('haja');
+        player.pauseVideo();
+      })
+
+      socket.on("seek",(seekedTime,requestTime)=>{
+        player.seekTo(seekedTime+getLatency(requestTime),true)
+      })
+
+      socket.on("serverTime",(serverTime)=>{
+        const currentTime = player.getCurrentTime();
+        if (Math.abs(currentTime-serverTime)>LIMIT){
+          console.log(currentTime-serverTime);
+          player.seekTo(serverTime);
+        }
+
+      })
+
+      function getLatency(time){
+        return (Date.now() - time)*0.001 
+      }
+
+
+
+    </script>
+
+    
+
+  
+  </body>
+</html>
